@@ -40,6 +40,8 @@ data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+!data/processed/*.dvc
+!data/processed/.gitignore
 
 # Models
 models/*.pkl
@@ -76,6 +78,7 @@ logs/
 # Environment
 .env
 .env.local
+.venv/
 
 # Credentials
 credentials.json
