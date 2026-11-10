@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: iris-api-bg
+  labels:
+    app: iris-api
+spec:
+  type: NodePort
+  # O switch do blue-green é trocar este 'version' entre blue e green.
+  selector:
+    app: iris-api
+    version: blue
+  ports:
+    - name: http
+      port: 80
+      targetPort: 5001
+      nodePort: 30090

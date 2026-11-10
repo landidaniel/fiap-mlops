@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iris-api
+  labels:
+    app: iris-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: iris-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: iris-api
+    spec:
+      containers:
+        - name: iris-api
+          # Imagem local (Docker Desktop compartilha o daemon -> nao precisa push).
+          # No video 83 trocamos por SEU-USUARIO/fiap-ml-cicd:vX.Y.Z
+          image: fiap-ml-iris:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5001
+          env:
+            - name: APP_VERSION
+              value: "1.0.0"
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5001
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

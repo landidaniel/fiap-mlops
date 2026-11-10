@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.Python
+venv/
+
+# MLflow
+mlruns/
+
+# Models
+models/*.pkl
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+
+# Pytest
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store

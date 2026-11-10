@@ -1,0 +1,17 @@
+# Aula 08 - CI/CD para MLOps
+# Instalar: pip install -r requirements.txt
+
+# --- Core ML ---
+scikit-learn==1.3.0
+joblib==1.3.2
+numpy<2            # scikit-learn 1.3.0 NAO e compativel com numpy 2.x
+
+# --- Serving (API que o Kubernetes vai orquestrar) ---
+flask==3.0.3
+gunicorn==21.2.0
+
+# --- Qualidade / CI ---
+pytest==7.4.0
+pytest-cov==4.1.0
+flake8==6.1.0
+black==23.10.0
