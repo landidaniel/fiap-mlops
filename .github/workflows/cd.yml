@@ -1,0 +1,106 @@
+name: CD
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login no Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extrair metadados da imagem
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/fiap-ml-cicd
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest
+
+      - name: Build e push da imagem
+        uses: docker/build-push-action@v5
+        with:
+          context: ./aula08
+          file: ./aula08/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  smoke-test:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Baixar a imagem publicada
+        run: |
+          IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/fiap-ml-cicd:latest
+          docker pull "$IMAGE"
+          docker run -d --name smoke -p 5001:5001 "$IMAGE"
+
+      - name: Aguardar readiness
+        run: |
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:5001/ready; then
+              echo " -> API pronta"
+              exit 0
+            fi
+            sleep 3
+          done
+
+          echo "Container não ficou ready"
+          docker logs smoke
+          exit 1
+
+      - name: Testar predict
+        run: |
+          OUT=$(curl -sf -X POST http://localhost:5001/predict \
+            -H 'Content-Type: application/json' \
+            -d '{"features":[5.1,3.5,1.4,0.2]}')
+
+          echo "Resposta: $OUT"
+
+          echo "$OUT" | grep -q '"label"' || {
+            echo "Smoke test falhou"
+            exit 1
+          }
+
+          echo "Smoke test OK"
+
+      - name: Limpar container
+        if: always()
+        run: docker rm -f smoke || true
+
+  # O runner hospedado do GitHub não acessa o Kubernetes local
+  # do Docker Desktop. O deploy da Aula 8.3 é feito localmente.
+  #
+  # Em um cluster acessível, o job seria semelhante a:
+  #
+  # deploy:
+  #   runs-on: ubuntu-latest
+  #   needs: smoke-test
+  #   steps:
+  #     - uses: azure/setup-kubectl@v4
+  #     - run: |
+  #         kubectl set image deployment/iris-api \
+  #           iris-api=${{ secrets.DOCKERHUB_USERNAME }}/fiap-ml-cicd:${{ github.ref_name }}
+  #         kubectl rollout status deployment/iris-api --timeout=120s
